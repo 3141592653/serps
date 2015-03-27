@@ -26,12 +26,19 @@ module Serps
       @keyword = options.delete(:keyword)
       @count = options.delete(:count).to_i || 10
       @progress = options.delete(:progress) || false
+      @delay = options.delete(:delay) || @delay
 
-      @agent = Mechanize.new options.delete(:agent)
-      @agent.user_agent = @user_agent
-      @agent.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      @agent = create_agent options
 
       @retry_level = 3
+    end
+
+    def create_agent(options)
+      Mechanize.new(options.delete(:agent)).tap do |m|
+        m.set_proxy(*options.delete(:proxy)) if options[:proxy]
+        m.user_agent = @user_agent
+        m.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      end
     end
 
     def params
@@ -39,9 +46,7 @@ module Serps
     end
 
     def generate_uri
-      uri = Addressable::URI.parse(@uri)
-      uri.query_values = params
-      uri
+      Addressable::URI.parse(@uri).tap { |uri| uri.query_values = params }
     end
 
     def send_request
